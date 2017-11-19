@@ -23,39 +23,55 @@ var District = function () {
 	return District;
 }();
 
-var CommandLineProgram = function () {
-	var districts = {
-		user: new District("user"),
-	};
-
-	function Show(message) {
+var Communications = function () {
+	function Tell(message) {
 		var self = this;
 		self.message = message;
+	};
+
+	function TellBackChannel(message, level, source) {
+		var self = this;
+		self.message = message;
+		self.level = level;
+		self.source = source;
+	};
+
+	return {
+		Tell: Tell,
+		TellBackChannel: TellBackChannel,
+	};
+}();
+
+var CommandLineProgram = function (Communications) {
+	var districts = {
+		user: new District("user"),
 	};
 
 	function display_message(show) {
 		console.log(show.message);
 	}
 
-	districts.user.add_message_handler(Show, display_message);
+	function init_city(city) {
+		city.districts.user.add_message_handler(Communications.Tell, display_message);
+	}
+
 	return {
 		districts: districts,
-		messages: {
-			Show: Show,
-		},
+		init: init_city,
 	};
-}();
+}(Communications);
 
 var districts = CommandLineProgram.districts;
 
-var starting_points = function init_module(messages) {
+var starting_points = function init_module(Communications, districts) {
 	return [
 		function go() {
-			districts.user.send(new messages.Show("hello, world"));
+			districts.user.send(new Communications.Tell("hello, world"));
 		},
 	];
-}(CommandLineProgram.messages);
+}(Communications, districts);
 
+CommandLineProgram.init({ districts: districts });
 for (idx in starting_points) {
 	starting_points[idx]();
 }
