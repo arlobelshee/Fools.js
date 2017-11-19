@@ -13,7 +13,7 @@ var District = function () {
 		self.send = function send(message) {
 			var handlers = self.routes.get(message.constructor);
 			if (!handlers) return;
-			for (idx in handlers) {
+			for (var idx in handlers) {
 				handlers[idx](message);
 			}
 		};
@@ -21,6 +21,27 @@ var District = function () {
 	District.static_fn = function () {
 	};
 	return District;
+}();
+
+function merge() {
+	result = new Map();
+	for (var idx in arguments) {
+		for (var k in arguments[idx]) {
+			result[k] = arguments[idx][k];
+		}
+	}
+	return result;
+};
+
+var ProgramFlow = function () {
+	function Invocation(args) {
+		var self = this;
+		self.args = args;
+	};
+
+	return {
+		Invocation: Invocation
+	};
 }();
 
 var Communications = function () {
@@ -42,7 +63,7 @@ var Communications = function () {
 	};
 }();
 
-var CommandLineProgram = function (Communications) {
+var CommandLineUser = function (Communications, ProgramFlow) {
 	var districts = {
 		user: new District("user"),
 	};
@@ -51,27 +72,35 @@ var CommandLineProgram = function (Communications) {
 		console.log(show.message);
 	}
 
-	function init_city(city) {
+	function create_initial_fools(city) {
 		city.districts.user.add_message_handler(Communications.Tell, display_message);
 	}
 
 	return {
 		districts: districts,
-		init: init_city,
+		bind: create_initial_fools,
 	};
-}(Communications);
+}(Communications, ProgramFlow);
 
-var districts = CommandLineProgram.districts;
+var HelloWorld = function (Communications, ProgramFlow) {
+	var _city;
+	function go() {
+		_city.districts.user.send(new Communications.Tell("hello, world"));
+	};
 
-var starting_points = function init_module(Communications, districts) {
-	return [
-		function go() {
-			districts.user.send(new Communications.Tell("hello, world"));
-		},
-	];
-}(Communications, districts);
+	function create_initial_fools(city) {
+		_city = city;
+		city.districts.user.add_message_handler(ProgramFlow.Invocation, go);
+	}
 
-CommandLineProgram.init({ districts: districts });
-for (idx in starting_points) {
-	starting_points[idx]();
-}
+	return {
+		districts: {},
+		bind: create_initial_fools,
+	};
+}(Communications, ProgramFlow);
+
+var city = { districts: merge(CommandLineUser.districts, HelloWorld.districts) };
+CommandLineUser.bind(city);
+HelloWorld.bind(city);
+
+city.districts.user.send(new ProgramFlow.Invocation([]));
